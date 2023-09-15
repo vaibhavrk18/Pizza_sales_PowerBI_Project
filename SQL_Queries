@@ -1,0 +1,134 @@
+DROP TABLE IF EXISTS pizza_sales;
+CREATE TABLE pizza_sales(pizza_id int primary key, order_id int, pizza_name_id varchar(50),
+						 quantity smallint, order_date date, order_time time,unit_price double precision,
+						 total_price double precision, pizza_size char(10),pizza_category char(50),
+						 pizza_ingredients varchar(200), pizza_name varchar(100));
+
+SELECT * FROM pizza_sales;
+
+
+COPY pizza_sales from 'C:\Users\Vaibhav\OneDrive\Desktop\pizza_sales.csv' WITH CSV HEADER;
+/* IF access denied msg is prompted then dothis check : 
+	go to properties of file -> security -> edit -> type " everyone" -> allow all the access and then apply.*/
+
+select * from pizza_sales;
+
+/* KPIs */
+
+/* 1. Total Revenue */ 
+
+SELECT SUM(quantity*unit_price) as total_revenue
+from pizza_sales;
+
+/* 2. Average order values: The average amount spent per order, calculated by total revenue by total number of orders */
+
+SELECT SUM(total_price) / COUNT(DISTINCT order_id) as average_order_value
+FROM pizza_sales;
+
+/* 3. Total Pizza sold */ 
+
+SELECT SUM(quantity) as total_pizza_sold
+from pizza_sales;
+
+/* 4. Total orders placed */
+
+SELECT COUNT(DISTINCT order_id) as Total_order_placed
+from pizza_sales;
+
+/* 5. Average pizzas per order :
+		The average number of pizzas sold per order, calculated by dividing total number of pizzas sold by the 
+		total number of orders*/ 
+
+SELECT CAST(
+			CAST(SUM(quantity) AS DECIMAL(10,2)) 
+				/ 
+			CAST(COUNT(DISTINCT order_id) AS DECIMAL(10,2)) AS DECIMAL(10,2)
+			)
+			as avg_pizzas_per_order
+from pizza_sales;
+
+/* CHARTS REQUIREMENT */ 
+
+/* daily trends for total orders */ 
+/* create bar chart that dispay the daily trend of total oders over specific time period.
+	this chart will help us identify any patterns or fluctuations in order volumes on daily basis. */
+
+select * from pizza_sales;
+SELECT TO_CHAR(order_date,'DAY') as order_day, COUNT(DISTINCT order_id) as total_orders
+from pizza_sales
+group by TO_CHAR(order_date,'DAY');
+
+
+/* SELECT DATENAME(DW, order_date) as order_day, COUNT(DISTINCT order_id) as total_orders
+from pizza_sales
+group by DATENAME(DW, order_date); */ 
+
+
+/* Monthly trend */ 
+/* Create a line chart that illustrate the hourly trend of total orders throughout the day.
+this chart will allow us to identify the peak hours or periods of high order activity. */ 
+
+SELECT TO_CHAR(order_date,'MONTH') AS order_month, COUNT(DISTINCT order_id) as total_orders
+from pizza_sales
+group by TO_CHAR(order_date,'MONTH')
+order by COUNT(DISTINCT order_id) DESC;
+
+/* Percentage of sales by pizza category */
+/* Create a pie chart that shows the distribution of sales across different pizza categories.
+	this chart will provide insights into the probability of various pizza categories and their 
+	contribution to overall sales. */
+
+SELECT * FROM pizza_sales;
+
+SELECT 
+	pizza_category, 
+	CAST(SUM(total_price) AS DECIMAL(10,4)) as total_sales,
+	CAST(SUM(total_price) * 100 / (SELECT 
+								   	SUM(total_price) 
+									FROM pizza_sales 
+								   	WHERE DATE_PART('MONTH',order_date) = 1) AS DECIMAL(10,4)) as pct
+FROM pizza_sales
+WHERE DATE_PART('MONTH',order_date) = 1
+GROUP BY pizza_category;
+
+/* 4. Percentage of sale by pizza size. */ 
+/* Generate the pie chart that represent the percentage of sales attributed to different pizza size.
+	This chart will help us understand customer preference for pizza size and their inpact on sales. */
+
+SELECT 
+	pizza_size, 
+	CAST(SUM(total_price) AS DECIMAL(10,2)) as total_sales,
+	CAST(SUM(total_price) * 100 / (SELECT 
+								   	SUM(total_price) 
+									FROM pizza_sales
+								  	WHERE DATE_PART('quarter',order_date) = 1) AS DECIMAL(10,2)) as pct
+FROM pizza_sales
+WHERE DATE_PART('quarter',order_date) = 1
+GROUP BY pizza_size
+ORDER BY pct DESC;
+
+/* Top 5 best sellers by revenue, quantity and toatl orders */
+/* Create bar chart highlighting the top 5 best selling pizzas based on the revenue, total quantity and total ordes.
+	This chart will help us identify the most popular pizza options. */ 
+
+select * from pizza_sales;
+
+-- TOP 5 BY REVENUE
+SELECT pizza_name, SUM(total_price) as total_revenue from pizza_sales
+group by pizza_name
+order by total_revenue DESC LIMIT 5;
+
+-- BOTTOM 5 BY REVENUE
+SELECT pizza_name, SUM(total_price) as total_revenue from pizza_sales
+group by pizza_name
+order by total_revenue LIMIT 5;
+
+-- TOP 5 BY QUANTITY
+SELECT pizza_name, SUM(quantity) as total_quantity from pizza_sales
+group by pizza_name
+order by total_quantity DESC LIMIT 5;
+
+-- BOTTOM 5 BY QUANTITY
+SELECT pizza_name, SUM(quantity) as total_quantity from pizza_sales
+group by pizza_name
+order by total_quantity LIMIT 5;
